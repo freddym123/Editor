@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://kit.fontawesome.com/64f7915aec.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="style.css">
+    <title>Document</title>
+</head>
+<body class="dark">
+
+    <header>
+        <h1>JS Compiler</h1>
+    </header>
+    
+    <main>
+        <div class="editor">
+            <div class="editor-header header">
+                <div class="file-name">main.js</div>
+                <div class="editor-controls">
+                    <button type="button" id="fullscreen"><i class="fa-solid fa-expand"></i></button>
+                    <button type="button" id="screenmode"><i class="fa-regular fa-sun"></i></button>
+                    <button type="button" class="run" id="runBtn">Run</button>
+                </div>
+            </div>
+            <div class="editor-area">
+                <div class="lines">
+                    <div>1</div>
+                    <div>2</div>
+                </div>
+                <div class="editor-text">
+                    <textarea word-break='off' wrap="soft" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+                    <div class="hidden-row row-highlight"></div>                   
+                    <div class="cursor-pos-div" style="position: absolute"><span class="cursor-pos"></span></div>
+                    <div class="row"><span class="text">/// Online</span></div>
+                    <div class="row"><span class="text">/// Online</span></div>
+                    <div class="cursor"></div>
+                </div>
+            </div>
+        </div>
+        <div class="output">
+            <div class="output-header header">
+                <div>Output</div>
+                <div><button type="button" class="clear">Clear</button></div>
+            </div>
+            <div class="output-text">
+                <div class="row"><span>$</span></div>
+            </div>
+        </div>
+    </main>
+    <script src="script.js" type="module"></script>
+</body>
+</html>
