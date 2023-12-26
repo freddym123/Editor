@@ -10,6 +10,11 @@ const clearBtn = document.querySelector('.clear')
 const runBtn = document.querySelector('#runBtn');
 const output = document.querySelector('.output-text')
 const fullScreenBtn = document.querySelector("#fullscreen")
+const pairCount = {
+    "'": 0,
+    "\"": 0,
+    
+}
 
 let editorDim = editor.getClientRects()[0];
 
@@ -59,6 +64,8 @@ function setRow(text){
     let comment = '';
     let rest = text;
     console.log(text);
+    pairCount["'"] = 0;
+    pairCount["\""] = 0;
 
     if(index != -1){
         rest = text.substring(0,index);
@@ -80,6 +87,11 @@ function setRow(text){
             rowText+= ' ';
             word = '';
         }else if(rest[i] == '\'' || rest[i] == '"'){
+            if(rest[i] == '\''){
+                pairCount["'"] += 1;
+            }else{
+                pairCount['"'] += 1;
+            }
             quoteMark = rest[i];
             rowText += `<span class='text'>${word}</span>`;
             if(i == rest.length - 1){
@@ -92,6 +104,7 @@ function setRow(text){
                 let string = rest.substring(i, index+1);
                 rowText+= `<span class='text string'>${string}</span>`;
                 i = index;
+                pairCount[quoteMark] += 1;
             }  
             word = '';
         }else if(punctuation.includes(rest[i])){
@@ -492,6 +505,47 @@ textarea.addEventListener('keydown', (e)=>{
         lines.innerHTML = text;
         
     
+    }else if(e.key == '"' && (!(pairCount['"'] % 2))){
+        let index = textarea.selectionStart;
+        textarea.value = textarea.value.substring(0,textarea.selectionStart) + '""' + textarea.value.substring(textarea.selectionStart)
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart-1).replace(/\n$/, "\n\x01");
+        currentRow.innerHTML =setRow(textarea.value)
+        e.preventDefault()
+        textarea.selectionStart = index+1;
+        textarea.selectionEnd = index+1;
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart).replace(/\n$/, "\n\x01")
+
+    }else if(e.key == "'" && (!(pairCount["'"] % 2))){
+        let index = textarea.selectionStart;
+        textarea.value = textarea.value.substring(0,textarea.selectionStart) + "''" + textarea.value.substring(textarea.selectionStart)
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart-1).replace(/\n$/, "\n\x01");
+        currentRow.innerHTML =setRow(textarea.value)
+        textarea.selectionStart = index+1;
+        textarea.selectionEnd = index+1;
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart).replace(/\n$/, "\n\x01")
+        
+        e.preventDefault()
+
+    }else if(e.key=="["){
+        let index = textarea.selectionStart;
+        textarea.value = textarea.value.substring(0,textarea.selectionStart) + "[]" + textarea.value.substring(textarea.selectionStart)
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart-1).replace(/\n$/, "\n\x01");
+        currentRow.innerHTML =setRow(textarea.value)
+        textarea.selectionStart = index+1;
+        textarea.selectionEnd = index+1;
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart).replace(/\n$/, "\n\x01")
+        e.preventDefault()
+
+    }else if(e.key=="{"){
+        let index = textarea.selectionStart;
+        textarea.value = textarea.value.substring(0,textarea.selectionStart) + "{}" + textarea.value.substring(textarea.selectionStart)
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart-1).replace(/\n$/, "\n\x01");
+        currentRow.innerHTML =setRow(textarea.value)
+        textarea.selectionStart = index+1;
+        textarea.selectionEnd = index+1;
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart).replace(/\n$/, "\n\x01")
+        e.preventDefault()
+
     }else if(e.key == 'Backspace' && cursor_positioner.textContent == ''){
 
         if((currentRow.getClientRects()[0].width % editor.getClientRects()[0].width) > 0){
@@ -573,7 +627,7 @@ textarea.addEventListener('keydown', (e)=>{
             editor.scrollLeft = left - 200;
         }
 
-        
+    
 
 
         cursor.style.top = newIndex + 'px';
