@@ -13,7 +13,7 @@
     --dark-editor-header: #2d2f34;
     --dark-button-color: white;
     --dark-comment: gray;
-    --dark-keyword: #CDA869;
+    --dark-keyword: #F9EE98;
     --dark-storage: #F9EE98;
     --dark-cursor: gray;
     --dark-string: #8F9D6A;
@@ -74,7 +74,9 @@ body{
     background-color: var(--current-background);
 }
 
-
+.funcName{
+    color: #AC885B;
+}
 
 header{
     padding: 1rem;
@@ -83,6 +85,10 @@ header{
     height: 5vh;
     display: flex;
     align-items: center;
+}
+
+.param{
+    color: #7587A6;
 }
 
 main{

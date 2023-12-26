@@ -18,7 +18,7 @@ const pairCount = {
 
 let editorDim = editor.getClientRects()[0];
 
-const punctuation = ['.', ';','(',')','{','}'];
+const punctuation = [',', '.', ';','(',')','{','}'];
 
 
 function slicePX(string){
@@ -36,7 +36,7 @@ document.addEventListener('resize', ()=>{
 })
 
 
-const keywords = ['await','break ','case', 'catch', 'class',
+const keywords = ['log','await','break ','case', 'catch', 'class',
     'const', 'continue', 'debugger','default ','delete ',
     'do','else','enum','export','extends',
     'false','finally','for','function','if',
@@ -60,40 +60,57 @@ console.log('\'dsdsfdfd\'fdfd'.split('\''));
 
 
 function setRow(text){
+    /**
+     *  Function sets the text of the active row in editor
+     * 
+     * @param{string} text The text that is placed on the active row of editor
+     * @return{string} Returns a string which contains html to be used in innerHtml
+     */
     let index = text.indexOf('//');
     let comment = '';
     let rest = text;
+    let functionFound = false;  
+    let params = false;
     console.log(text);
     pairCount["'"] = 0;
     pairCount["\""] = 0;
 
-    if(index != -1){
+    if(index != -1){  // Checks if there is a single line comment. If there is it slices the text and saves the comment to be appended to the end
         rest = text.substring(0,index);
         comment = `<span class='text comment'>${text.substring(index)}</span>`
     }
-    /*let strings = text.replace(/"([^"]*)"|"([^"]*)|'([^'])*'/g, (match)=>{
-        return `<span class='text string'>${match}</span>`
-    });*/
 
     let word = '';
     let rowText = '';
     let quoteMark = '';
 
-    for(let i = 0; i < rest.length; i++){ // like a 'donut'in the sky
+    for(let i = 0; i < rest.length; i++){ // Loops through the rest of the text which is not part of the comment and color codes it
         if(rest[i] == ' '){
             if(word != ''){
-                rowText += `<span class='text'>${word}</span>`;
+                if(params){
+                    rowText += `<span class='text param'>${word}</span>`;
+                }else{
+                    rowText += `<span class='text'>${word}</span>`;
+                }
+                
             }
             rowText+= ' ';
             word = '';
         }else if(rest[i] == '\'' || rest[i] == '"'){
+            functionFound = false
+            
             if(rest[i] == '\''){
                 pairCount["'"] += 1;
             }else{
                 pairCount['"'] += 1;
             }
             quoteMark = rest[i];
-            rowText += `<span class='text'>${word}</span>`;
+            if(params){
+                rowText += `<span class='text param'>${word}</span>`;
+            }else{
+                rowText += `<span class='text'>${word}</span>`;
+            }
+            
             if(i == rest.length - 1){
                 rowText += `<span class='text string'>${quoteMark}</span>`;
             }else if(!rest.includes(quoteMark, i+1)){
@@ -107,10 +124,25 @@ function setRow(text){
                 pairCount[quoteMark] += 1;
             }  
             word = '';
+            params = false
         }else if(punctuation.includes(rest[i])){
-            rowText += `<span class='text'>${word}</span>`;
+            console.log(functionFound)
+            if(functionFound && rest[i] == "("){
+                rowText += `<span class='text funcName'>${word}</span>`;
+                params = true;
+            }else{
+                if(params){
+                    rowText += `<span class='text param'>${word}</span>`;
+                }else{
+                    rowText += `<span class='text'>${word}</span>`;``
+                }
+                if(rest[i] != ","){params = false}
+            }
+            
             rowText += `<span class='text'>${rest[i]}</span>`
             word = '';
+            functionFound = false
+            
         }else{
             word+=rest[i];
             if(keywords.includes(word) && i == rest.length-1){
@@ -119,12 +151,25 @@ function setRow(text){
                 }else{
                     rowText += `<span class='text keyword'>${word}</span>`;
                 }
+
+                if(word == "function"){
+                    functionFound = true
+                }else{
+                    functionFound = false
+                }
+                console.log(functionFound)
+
                 word = '';
             }else if(keywords.includes(word) && !/[a-z]/i.test(rest[i+1])){
                 if(word == 'let' || word == 'var' || word == 'const'){
                     rowText += `<span class='text storage'>${word}</span>`;
                 }else{
                     rowText += `<span class='text keyword'>${word}</span>`;
+                }
+                if(word == "function"){
+                    functionFound = true
+                }else{
+                    functionFound = false
                 }
                 word = '';
             }else if(!isNaN(word) && !/[0-9]/i.test(rest[i+1])){
@@ -160,6 +205,13 @@ function setPage(){
 }
 
 function setOutput(outputText, filepath, status){
+    /**
+    * Displays the output text of code sent to compiler 
+    * @param {string} outputText The output returned from backend compiler
+    * @param {string} filepath The filepath where the js file is stored
+    * @param {string} status The status returned from backend of executing the file
+    * 
+    */
 
 
     let rowsText;
@@ -199,6 +251,9 @@ function name(){
 document.addEventListener('load', setPage);
 
 runBtn.addEventListener('click', async (event)=>{
+    /**
+     * Sends code in editor to server to be executed on click
+     */
     event.preventDefault();
     const rows = editor.querySelectorAll('.row');
     let code = ''
@@ -220,8 +275,12 @@ runBtn.addEventListener('click', async (event)=>{
 
     runBtn.disabled = true;
 
+
+
     const res = await fetch('http://localhost:5000/run', options);
     const data = await res.json();
+
+    console.log(data);
     
     if(data){
         runBtn.disabled = false;
@@ -229,11 +288,11 @@ runBtn.addEventListener('click', async (event)=>{
     let intervalID;
 
     intervalID = setInterval(async ()=>{
-        let status = await fetch('http://localhost:5000/status?' + new URLSearchParams({id: data.jobId}))
+        let status = await fetch('http://localhost:5000/status?' + new URLSearchParams({id: data.jobId}))  // Fetches from backend until the file has been executed 
         status = await status.json();
-        console.log(status)
+        console.log(status);
         const {success, job, error} = status
-
+        console.log(success);
         if(success){
             const {status: jobStatus, output: jobOutput, filepath} = job
             if(jobStatus == 'pending') return;
@@ -250,6 +309,9 @@ runBtn.addEventListener('click', async (event)=>{
 })
 
 clearBtn.addEventListener('click', ()=>{
+    /**
+     *  Clear both the editor and the output
+     */
     const rows = editor.querySelectorAll('.row');
     for(let i = rows.length - 1; i > 0; i--){
         editor.removeChild(rows[i]);
@@ -268,6 +330,9 @@ clearBtn.addEventListener('click', ()=>{
 })
 
 screenmodeBtn.addEventListener('click', ()=>{
+    /**
+     * Switches from dark mode to light mode
+     */
     const style = document.querySelector(':root');
     console.log(getComputedStyle(style).getPropertyValue('--current-foreground'));
     if(getComputedStyle(style).getPropertyValue('--current-foreground') == 'white'){
@@ -462,6 +527,9 @@ function spanText(){
 
 
 textarea.addEventListener('keydown', (e)=>{
+    /**
+     * Handles what happens when specific keys are pressed 
+     */
     cursor.style.animation = 'none';
     console.log(e.key);
     textarea.value = textarea.value.replace(/\n/g, '');
@@ -546,6 +614,15 @@ textarea.addEventListener('keydown', (e)=>{
         cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart).replace(/\n$/, "\n\x01")
         e.preventDefault()
 
+    }else if(e.key == "("){
+        let index = textarea.selectionStart;
+        textarea.value = textarea.value.substring(0,textarea.selectionStart) + "()" + textarea.value.substring(textarea.selectionStart)
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart-1).replace(/\n$/, "\n\x01");
+        currentRow.innerHTML =setRow(textarea.value)
+        textarea.selectionStart = index+1;
+        textarea.selectionEnd = index+1;
+        cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart).replace(/\n$/, "\n\x01")
+        e.preventDefault()
     }else if(e.key == 'Backspace' && cursor_positioner.textContent == ''){
 
         if((currentRow.getClientRects()[0].width % editor.getClientRects()[0].width) > 0){
@@ -783,26 +860,10 @@ textarea.addEventListener('keydown', (e)=>{
 
 
 
-
-
-
-
-
-function closer(num1){
-    let floorNum = Math.floor(num1)
-    let ceilNum = Math.ceil(num1);
-    let difference1 = Math.abs(floorNum - num1);
-    let difference2 = Math.abs(ceilNum - num1);
-    if(difference1 >= difference2){
-        return ceilNum;
-    }
-    return floorNum;
-}
-
-
-
-
 function toggleFullScreen() {
+    /**
+     * Method fullscreens the editor 
+     */
     var doc = window.document;
     var docEl = doc.documentElement;
 
