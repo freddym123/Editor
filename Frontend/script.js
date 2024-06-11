@@ -10,10 +10,98 @@ const clearBtn = document.querySelector('.clear')
 const runBtn = document.querySelector('#runBtn');
 const output = document.querySelector('.output-text')
 const fullScreenBtn = document.querySelector("#fullscreen")
+const fileUpload = document.querySelector("#script-upload")
+const downloadBtn = document.querySelector("#download")
+const selectStartDiv = document.querySelector(".cursor-select-start")
+const selectStartSpan = document.querySelector(".cursor-select-start-text")
+const selectEndDiv = document.querySelector(".cursor-select-end")
+const selectEndSpan = document.querySelector(".cursor-select-end-text")
 const pairCount = {
     "'": 0,
     "\"": 0,
-    
+}
+
+let mousemoveHandler = null
+
+let selectStart = null
+let selectEnd = null
+
+function setEditorFromUpload(texts){
+    const rows = editor.querySelectorAll('.row');
+    let rowBefore = rows[rows.length - 1]
+    console.log(rowBefore)
+    console.log(rows)
+    texts.forEach((text, index)=>{
+        if(index < rows.length){
+            rows[index].innerHTML = setRow(text);
+        }else{
+            const newDiv = document.createElement("div")
+            newDiv.classList.add("row")
+            newDiv.innerHTML = setRow(text)
+            rowBefore.after(newDiv)
+            rowBefore = newDiv
+        }
+    })
+
+    const newRows = editor.querySelectorAll('.row')
+    setRowNumber(newRows.length)
+
+}
+
+function setRowNumber(length){
+    let text = ''
+    for(let i = 0; i < length; i++){
+        text += `<div>${i+1}</div>`;
+    }
+    lines.innerHTML = text;
+}
+
+fileUpload.addEventListener("change", (e)=>{
+    if(e.target.files[0]){
+        const reader = new FileReader()
+        reader.onload = (e)=>{
+            const rowText = e.target.result.split('\n')
+            setEditorFromUpload(rowText)
+        }
+
+        reader.readAsText(e.target.files[0])
+    }
+})
+
+editor.addEventListener("paste", handlePaste)
+
+downloadBtn.addEventListener("click",()=>{
+    const rows = editor.querySelectorAll(".row")
+    let link = document.createElement('a');
+    link.download = "main.js"
+    let code = ""
+    rows.forEach((row)=>{
+        code += row.innerHTML.replace(/<span[^>]*>|<\/span>/g, '') + '\n';
+    })
+
+    let blob = new Blob([code], {type: 'text/plain'})
+
+    link.href = URL.createObjectURL(blob)
+    link.click()
+    URL.revokeObjectURL(link.href)
+
+})
+
+class CurlyBracketLoc{
+    constructor(row, x){
+        this.row = row;
+        this.x = x;
+    }
+
+    lessthan(other){
+        return (other.x > this.x || other.row > this.row);
+    }
+
+    greaterthan(other){
+        return(
+            other.row < this.row || other.x < this.x
+        )
+    }
 }
 
 let editorDim = editor.getClientRects()[0];
@@ -26,15 +114,6 @@ function slicePX(string){
 }
 
 let margin = (editor.clientWidth) - 40;
-
-console.log(margin);
-
-
-
-document.addEventListener('resize', ()=>{
-
-})
-
 
 const keywords = ['log','await','break ','case', 'catch', 'class',
     'const', 'continue', 'debugger','default ','delete ',
@@ -55,10 +134,6 @@ function isKeyWord(text){
     return text.endsWith(keywords[indexOfKeyword]);
 }
 
-console.log('\'dsdsfdfd\'fdfd'.split('\''));
-
-
-
 function setRow(text){
     /**
      *  Function sets the text of the active row in editor
@@ -71,7 +146,6 @@ function setRow(text){
     let rest = text;
     let functionFound = false;  
     let params = false;
-    console.log(text);
     pairCount["'"] = 0;
     pairCount["\""] = 0;
 
@@ -126,7 +200,6 @@ function setRow(text){
             word = '';
             params = false
         }else if(punctuation.includes(rest[i])){
-            console.log(functionFound)
             if(functionFound && rest[i] == "("){
                 rowText += `<span class='text funcName'>${word}</span>`;
                 params = true;
@@ -144,7 +217,14 @@ function setRow(text){
             functionFound = false
             
         }else{
-            word+=rest[i];
+            if(rest[i] == '<'){
+                word+="&lt;"
+            }else if(rest[i] == '>'){
+                word += "&gt;"
+            }else{
+                word+=rest[i];
+            }
+            
             if(keywords.includes(word) && i == rest.length-1){
                 if(word == 'let' || word == 'var' || word == 'const'){
                     rowText += `<span class='text storage'>${word}</span>`;
@@ -198,7 +278,7 @@ function setPage(){
         for(let i = 0; i < row.childElementCount; i++){
             rowText += row.children[i].textContent;
         }
-        console.log(rowText);
+    
         row.innerHTML = setRow(rowText);
 
     })
@@ -242,13 +322,10 @@ function setOutput(outputText, filepath, status){
     output.innerHTML = text;
 }
 
-function name(){
-
-}
 
 
 
-document.addEventListener('load', setPage);
+document.addEventListener('DOMContentLoaded', setPage);
 
 runBtn.addEventListener('click', async (event)=>{
     /**
@@ -260,7 +337,6 @@ runBtn.addEventListener('click', async (event)=>{
     rows.forEach((row)=>{
         code += row.innerHTML.replace(/<span[^>]*>|<\/span>/g, '') + '\n';
     })
-    let language = 'cpp';
 
     const payload = {
         language: 'js',
@@ -365,12 +441,9 @@ screenmodeBtn.addEventListener('click', ()=>{
     }
 })
  
-
-console.log(row_highlight);
 let isClicked = false;
 let currentRow = editor.querySelectorAll('.row')[(parseInt(slicePX(getComputedStyle(cursor).top)) / 21)];
 
-console.log(currentRow);
 
 console.log(parseInt(slicePX(getComputedStyle(cursor).top)) / 21);
 
@@ -386,7 +459,7 @@ editor.addEventListener('scroll', (e)=>{
 })
 
 
-editor.addEventListener('click', (e)=>{
+function positionCursor(e){
     console.log(e.target);
     console.log(e.pageX - offsetLeft + editor.scrollLeft)
     let rectWidth = null;
@@ -439,14 +512,149 @@ editor.addEventListener('click', (e)=>{
         
         
     }
+}
 
-     
-
-    
-    
-})
+editor.addEventListener('click', positionCursor)
 
 editor.addEventListener('click', setFocus);
+
+function removeSelect(){
+    const selectRows = editor.querySelectorAll(".select")
+    const toRemove = []
+    for(let i = 0; i < selectRows.length; i++){
+        if(selectRows[i].classList.length == 1){
+            toRemove.push(selectRows[i])
+        }
+    }
+
+    toRemove.forEach((element)=>{
+        editor.removeChild(element)
+    })
+}
+
+const select = (e, oldLeft, oldRow, oldX, oldText)=>{
+    console.log("MoveEventActive")
+
+    if(e.buttons == 0){
+        editor.removeEventListener("mousemove", mousemoveHandler)
+        return
+    }
+    positionCursor(e)
+    const newLeft = parseFloat(slicePX(cursor.style.left))
+    removeSelect()
+    const newRow = parseInt(slicePX(getComputedStyle(cursor).top)) / 21
+    const newX = textarea.selectionStart
+    const rows = editor.querySelectorAll(".row")
+    const selectRows = editor.querySelectorAll(".select")
+
+    selectStart = {row: oldRow, x: oldX}
+    selectEnd = {row: newRow, x: newX}
+
+    if(newRow < oldRow){
+        console.log("JEss")
+        selectStartDiv.style.left = `0px`
+        
+        
+        selectStartSpan.textContent = oldText.slice(0)
+
+
+        for(let i = oldRow-1; i > newRow; i--){
+
+            if(selectRows.length < oldRow - newRow + 1){
+                console.log("Nicr")
+                const newSelectRow = document.createElement("div")
+                newSelectRow.classList.add("select")
+                const span = document.createElement("span")
+                newSelectRow.appendChild(span)
+                const rect = rows[i].getClientRects()
+                newSelectRow.style.width = `${rect[rect.length - 1].width}px`
+                newSelectRow.style.height = "21px"
+                editor.append(newSelectRow)
+                newSelectRow.style.left = rows[i].style.left
+                newSelectRow.style.top = `${i*21}px`
+            }
+        }
+        selectEndDiv.style.left = `${newLeft}px`
+        selectEndDiv.style.top = cursor.style.top
+        selectEndSpan.textContent = getRowText(currentRow).slice(cursor_positioner.textContent.length)
+        return
+    }else if(newRow == oldRow){
+        selectEndSpan.textContent = ''
+    }else{
+        console.log("JEss")
+        selectStartDiv.style.left = `${oldLeft}px`
+        selectStartSpan.textContent = getRowText(editor.querySelectorAll('.row')[oldRow]).slice(oldText.length)
+
+        for(let i = oldRow+1; i < newRow; i++){
+
+            if(selectRows.length < newRow - oldRow + 1){
+                console.log("Nicr")
+                const newSelectRow = document.createElement("div")
+                newSelectRow.classList.add("select")
+                const span = document.createElement("span")
+                newSelectRow.appendChild(span)
+                const rect = rows[i].getClientRects()
+                newSelectRow.style.width = `${rect[rect.length - 1].width}px`
+                newSelectRow.style.height = "21px"
+                editor.append(newSelectRow)
+                newSelectRow.style.left = rows[i].style.left
+                newSelectRow.style.top = `${i*21}px`
+            }
+        }
+
+        selectEndDiv.style.left = `0px`
+        selectEndDiv.style.top = cursor.style.top
+        selectEndSpan.textContent = cursor_positioner.textContent
+        return
+    }
+
+    
+
+    
+
+    
+    console.log(oldLeft, newLeft, typeof oldLeft, typeof newLeft)
+    if(oldLeft<=newLeft){
+        console.log("NoOOO")
+        selectStartDiv.style.left = `${oldLeft-2}px`
+        selectStartSpan.textContent = cursor_positioner.textContent.slice(oldText.length)
+        console.log(selectStartSpan.textContent)
+    }else{
+        console.log("YEDD")
+        selectStartDiv.style.left = `${newLeft-1}px`
+        selectStartSpan.textContent = oldText.slice(cursor_positioner.textContent.length)
+    }
+}
+
+editor.addEventListener("mouseup", ()=>{
+    editor.removeEventListener("mousemove", mousemoveHandler)
+})
+
+
+
+editor.addEventListener("mousedown", (e)=>{
+    positionCursor(e)
+    selectStart = null
+    selectEnd = null
+    selectEndSpan.textContent = ''
+    selectStartSpan.textContent = ''
+    removeSelect()
+    e.preventDefault()
+    console.log(e)
+    const oldLeft = parseFloat(slicePX(cursor.style.left))
+    const oldRow = parseInt(slicePX(getComputedStyle(cursor).top)) / 21
+    const oldX = textarea.selectionStart
+    const oldText = cursor_positioner.textContent
+    selectStartDiv.style.top = cursor.style.top
+    selectStartDiv.style.left = cursor.style.left
+    
+
+    if(e.button == 0){
+        mousemoveHandler = (e)=>{select(e, oldLeft, oldRow, oldX, oldText)}
+        editor.addEventListener("mousemove", mousemoveHandler)
+    }
+    
+})
 
 
 function setFocus(){
@@ -491,9 +699,9 @@ textarea.addEventListener('keyup', (e)=>{
     textarea.value = textarea.value.replace('\n', '');
    
     if(e.key == 'Enter'){
-        cursor_positioner.textContent = '';
+        /*cursor_positioner.textContent = '';
         cursor.style.left = '4px';
-        textarea.setSelectionRange(0,0);
+        textarea.setSelectionRange(0,0);*/
     }else if(e.key == 'Backspace' && cursor_positioner.textContent == ''){
         
     }else{
@@ -526,53 +734,373 @@ function spanText(){
 }
 
 
-textarea.addEventListener('keydown', (e)=>{
+function getRowText(row){
+    return row.innerHTML.replace(/<span[^>]*>|<\/span>/g, '');
+}
+
+function openCount(currentRow, currentX){
+    const rows = editor.querySelectorAll(".row")
+    let i = 0
+    const stack = []
+    const containsMultiple = rows[currentRow].innerHTML.replace(/<span[^>]*>|<\/span>/g, '').includes("{", currentX)
+
+
+    while(i <= currentRow){
+        const text = rows[i].innerHTML.replace(/<span[^>]*>|<\/span>/g, '')
+        const jMax = (containsMultiple && i == currentRow) ? currentX : text.length
+        for(let j = 0; j < jMax; j++){
+            if(text[j] == "{"){
+                stack.push("{")
+            }
+
+            if(text[j] == "}"){
+                stack.pop()
+                
+            }
+
+           
+
+
+        }
+
+        i += 1
+    }
+
+    console.log("Mice", stack.length)
+    return stack.length
+}
+
+function removeSelectText(){
+    const rows = editor.querySelectorAll(".row")
+
+    if(selectStart.row == selectEnd.row){
+        const rowText = getRowText(rows[selectStart.row])
+        if(selectStart.x < selectEnd.x){
+            const newText = rowText.slice(0, selectStart.x) + rowText.slice(selectEnd.x)
+            console.log(newText)
+            textarea.value = newText
+            textarea.setSelectionRange(selectStart.x, selectStart.x)
+            rows[selectStart.row].innerHTML = setRow(newText)
+            selectStartSpan.textContent = ''
+            return
+        }else{
+            const newText = rowText.slice(0,selectEnd.x) + rowText.slice(selectStart.x)
+            textarea.value = newText
+            textarea.setSelectionRange(selectEnd.x, selectEnd.x)
+            rows[selectStart.row].innerHTML = setRow(newText)
+            selectStartSpan.textContent = ''
+        }
+        return
+    }
+
+    if(selectStart.row > selectEnd.row){
+        const rowsToRemove = []
+        const endRowText = getRowText(rows[selectEnd.row])
+        const startRowText = getRowText(rows[selectStart.row])
+        for(let i = selectEnd.row+1; i <= selectStart.row; i++){
+            rowsToRemove.push(rows[i])
+        }
+        for(let i = 0; i < rowsToRemove.length; i++){
+            editor.removeChild(rowsToRemove[i])
+        }
+
+        removeSelect()
+
+        const newText = endRowText.slice(0,selectEnd.x) + startRowText.slice(selectStart.x)
+        console.log(newText)
+        textarea.value = newText
+        textarea.setSelectionRange(selectEnd.x, selectEnd.x)
+        rows[selectEnd.row].innerHTML = setRow(newText)
+        selectStartSpan.textContent = ''
+        selectEndSpan.textContent = ''
+    }else if(selectStart.row < selectEnd.row){
+        
+        const rowsToRemove = []
+        const endRowText = getRowText(rows[selectEnd.row])
+        const startRowText = getRowText(rows[selectStart.row])
+        for(let i = selectStart.row+1; i <= selectEnd.row; i++){
+            rowsToRemove.push(rows[i])
+        }
+        for(let i = 0; i < rowsToRemove.length; i++){
+            editor.removeChild(rowsToRemove[i])
+        }
+    
+        removeSelect()
+
+        currentRow = rows[selectStart.row]
+        cursor.style.top = `${selectStart.row * 21}px`
+        row_highlight.style.top = cursor.style.top
+        const newText = startRowText.slice(0,selectStart.x) + endRowText.slice(selectEnd.x)
+        console.log(newText)
+        textarea.value = newText
+        textarea.setSelectionRange(selectStart.x, selectStart.x)
+        rows[selectStart.row].innerHTML = setRow(newText)
+        selectStartSpan.textContent = ''
+        selectEndSpan.textContent = ''
+        
+        
+    }
+
+    setRowNumber(editor.querySelectorAll(".row").length)
+}
+
+async function handlePaste(e){
+    e.preventDefault()
+    const toPasteText = (await navigator.clipboard.readText()).split("\r\n")
+    let cursorRowIndex = parseInt(slicePX(getComputedStyle(cursor).top)) / 21
+    const oldTextcursorIndex = textarea.selectionStart
+    console.log(toPasteText)
+    if(toPasteText.length == 1){
+        const newStartText = textarea.value.slice(0,textarea.selectionStart) + toPasteText + textarea.value.slice(textarea.selectionStart)
+        textarea.value = newStartText
+        currentRow.innerHTML = setRow(newStartText)
+        textarea.setSelectionRange(oldTextcursorIndex, oldTextcursorIndex)
+        return
+    }
+    console.log(toPasteText)
+    
+    const newStartText = textarea.value.slice(0,textarea.selectionStart) + toPasteText[0].replace("\n", "")
+    const cursorAfterText = textarea.value.slice(textarea.selectionStart)
+    textarea.value = newStartText
+    
+    currentRow.innerHTML = setRow(newStartText)
+    textarea.setSelectionRange(oldTextcursorIndex, oldTextcursorIndex)
+    for(let i = 1; i < toPasteText.length-1; i++){
+        let rows = editor.querySelectorAll(".row")
+        const newRow = document.createElement("div")
+        newRow.classList.add("row")
+        newRow.innerHTML = setRow(toPasteText[i].replace("\n", ""))
+        rows[cursorRowIndex].after(newRow)
+        cursorRowIndex += 1
+
+    }
+    const rows = editor.querySelectorAll(".row")
+    const newRow = document.createElement("div")
+    newRow.classList.add("row")
+    newRow.innerHTML = setRow(toPasteText[toPasteText.length-1].replace("\n", "") + cursorAfterText)
+    rows[cursorRowIndex].after(newRow)
+    setRowNumber(rows.length + 1)
+}
+
+
+function getSelectedText(){
+    if(!selectStart && !selectEnd){
+        return ''
+    }
+    const rows = document.querySelectorAll('.row')
+    let textToCopy = ''
+
+    if(selectStart.row == selectEnd.row){
+        if(selectStart.x < selectEnd.x){
+            textToCopy += textarea.value.slice(selectStart.x, selectEnd.x)
+        }else{
+            textToCopy += textarea.value.slice(selectEnd.x, selectStart.x)
+        }
+        return textToCopy
+    }
+
+    if(selectStart.row < selectEnd.row){
+        const startRowText = getRowText(rows[selectStart.row]).slice(selectStart.x)
+        textToCopy += startRowText
+
+        for(let i = selectStart.row + 1; i < selectEnd.row; i++){
+            textToCopy += "\n" + getRowText(rows[i])
+        }
+
+        const endRowText = getRowText(rows[selectEnd.row]).slice(0,selectEnd.x)
+        textToCopy += "\n" + endRowText
+        return textToCopy
+
+    }else{
+        const endRowText = getRowText(rows[selectEnd.row]).slice(selectEnd.x)
+        
+        textToCopy += endRowText
+
+        for(let i = selectEnd.row + 1; i < selectStart.row; i++){
+            textToCopy += "\n" + getRowText(rows[i])
+        }
+
+        const startRowText = getRowText(rows[selectStart.row]).slice(0, selectStart.x)
+        textToCopy += "\n" + startRowText
+        return textToCopy
+    }
+}
+
+
+textarea.addEventListener('keydown', async (e)=>{
     /**
      * Handles what happens when specific keys are pressed 
      */
     cursor.style.animation = 'none';
-    console.log(e.key);
     textarea.value = textarea.value.replace(/\n/g, '');
+    console.log("Check select: ", selectStart, selectEnd)
+    console.log(e.key)
 
+
+    if(selectStart && selectEnd){
+        if(e.key=="Control" || e.key == "c" && e.ctrlKey){
+            if(e.ctrlKey && e.key == "c"){
+                let textToCopy = getSelectedText()
+                try{
+                    await navigator.clipboard.writeText(textToCopy)
+                }catch(err){
+                    console.log("Failed to copy")
+                }
+                console.log(textToCopy)
+            }
+            
+            return
+        }else if(e.key == "x" && e.ctrlKey){
+            let textToCopy = getSelectedText()
+                try{
+                    await navigator.clipboard.writeText(textToCopy)
+                }catch(err){
+                    console.log("Failed to copy")
+                }
+                removeSelectText()
+                
+        }
+        else{
+            removeSelectText()
+        }
+        
+        selectStart = null
+        selectEnd = null
+    }
     
 
     if(e.key == "Enter"){
         e.preventDefault();
-
-
-        console.log(cursor.getClientRects()[0].y, editorDim.height );
-
+        let numberOfIndents = openCount(parseInt(slicePX(getComputedStyle(cursor).top)) / 21, textarea.selectionStart)
+        console.log(numberOfIndents, "Jo")
         if(cursor.getClientRects()[0].y > editorDim.height){
-            console.log('e')
             editor.scrollTop += 25;
         }
 
         editor.scrollLeft = 0;
+
         const newRow = document.createElement('div');
         const textAreaValue = textarea.value;
         newRow.classList.add('row');
         currentRow.after(newRow);
+        if(textarea.selectionStart > 0 &&  textAreaValue[textarea.selectionStart-1] == "{"  && textAreaValue[textarea.selectionStart] == "}"){
+            numberOfIndents += 1
+            const secondRow = document.createElement("div")
+            secondRow.classList.add("row")
+            newRow.after(secondRow)
+    
+            currentRow.innerHTML = setRow(textAreaValue.substring(0, textarea.selectionStart));
+            const rows = Array.from(editor.querySelectorAll('.row'));
+            cursor.style.top = parseInt(slicePX(getComputedStyle(cursor).top)) + 21 + 'px';
+            textarea.style.top = getComputedStyle(cursor).top;
+            currentRow = rows[parseInt(slicePX(getComputedStyle(cursor).top)) / 21];
+            row_highlight.style.top = getComputedStyle(cursor).top; 
+
+            const splitText = textAreaValue.substring(textarea.selectionStart).replace('\n', '')
+            console.log(splitText)
+            const indexOfClose = splitText.indexOf("}")
+            
+            console.log(numberOfIndents)
+            textarea.value = ''
+            let tabs = ""
+            let secondRowTabs = ""
+            for(let i = 1; i <= numberOfIndents; i++){
+                tabs += "\t"
+                if(i < numberOfIndents){
+                    secondRowTabs += "\t"
+                }
+            }
+            textarea.value = tabs + splitText.slice(0, indexOfClose);
+            cursor_positioner.innerHTML = textarea.value
+
+            cursor_positioner_div.style.top = `${currentRow.getClientRects().top - offsetTop}px`;
+            cursor_positioner_div.style.left = `${currentRow.style.left}px`
+        
+            let rects = cursor_positioner.getClientRects(),
+            lastRect = rects[rects.length - 1],
+            left = lastRect.left-offsetLeft+lastRect.width + editor.scrollLeft;
+        
+            cursor.style.left = `${left}px`;
+            textarea.style.left = `${left}px`;
+
+            cursor_positioner.textContent = textarea.value;
+            textarea.setSelectionRange(numberOfIndents,numberOfIndents);
+            currentRow.innerHTML = setRow(textarea.value);
+            secondRow.innerHTML = setRow(secondRowTabs + splitText.slice(indexOfClose))
+            
+            setRowNumber(rows.length)
+            return
+        }else if(textAreaValue.indexOf("{") != -1 && textAreaValue[textarea.selectionStart - 1] != "}"){
+            console.log("Freddy")
+            const pastIndex = parseInt(slicePX(getComputedStyle(cursor).top)) / 21
+            currentRow.innerHTML = setRow(textAreaValue.substring(0, textarea.selectionStart));
+            const rows = Array.from(editor.querySelectorAll('.row'));
+            cursor.style.top = parseInt(slicePX(getComputedStyle(cursor).top)) + 21 + 'px';
+            textarea.style.top = getComputedStyle(cursor).top;
+            currentRow = rows[parseInt(slicePX(getComputedStyle(cursor).top)) / 21];
+            row_highlight.style.top = getComputedStyle(cursor).top; 
+            
+            const oldTextAreaIndex = textarea.selectionStart
+            textarea.value = ''
+            console.log(numberOfIndents)
+            let tabs = ""
+            for(let i = 1; i <= numberOfIndents; i++){
+                tabs += "\t"
+            }
+            textarea.value = tabs + textAreaValue.substring(oldTextAreaIndex).replace('\n', '');
+            cursor_positioner.innerHTML = tabs
+
+            cursor_positioner_div.style.top = `${currentRow.getClientRects().top - offsetTop}px`;
+            cursor_positioner_div.style.left = `${currentRow.style.left}px`
+        
+            let rects = cursor_positioner.getClientRects(),
+            lastRect = rects[rects.length - 1],
+            left = lastRect.left-offsetLeft+lastRect.width + editor.scrollLeft;
+        
+            cursor.style.left = `${left}px`;
+            textarea.style.left = `${left}px`;
+            textarea.setSelectionRange(numberOfIndents,numberOfIndents);
+        
+            currentRow.innerHTML = setRow(textarea.value);
+
+            setRowNumber(rows.length)
+            
+            return
+        }
+        console.log("Good Night")
+        
         currentRow.innerHTML = setRow(textAreaValue.substring(0, textarea.selectionStart));
         const rows = Array.from(editor.querySelectorAll('.row'));
         cursor.style.top = parseInt(slicePX(getComputedStyle(cursor).top)) + 21 + 'px';
         textarea.style.top = getComputedStyle(cursor).top;
         currentRow = rows[parseInt(slicePX(getComputedStyle(cursor).top)) / 21];
         row_highlight.style.top = getComputedStyle(cursor).top; 
-        cursor_positioner.textContent = '';
-        cursor.style.left = '4px';
-        textarea.style.left = '4px';
-        textarea.value = textAreaValue.substring(textarea.selectionStart).replace('\n', '');
-        textarea.setSelectionRange(0,0);
-        console.log(textarea.value);
-        currentRow.innerHTML = setRow(textarea.value);
-
-        let text = ''
-        for(let i = 0; i < rows.length; i++){
-            text += `<div>${i+1}</div>`;
-        }
-        lines.innerHTML = text;
         
-    
+        const oldTextAreaIndex = textarea.selectionStart
+        textarea.value = ''
+        console.log(numberOfIndents)
+        let tabs = ""
+        for(let i = 1; i <= numberOfIndents; i++){
+            tabs += "\t"
+        }
+        textarea.value = tabs + textAreaValue.substring(oldTextAreaIndex).replace('\n', '');
+        cursor_positioner.innerHTML = tabs
+
+        cursor_positioner_div.style.top = `${currentRow.getClientRects().top - offsetTop}px`;
+        cursor_positioner_div.style.left = `${currentRow.style.left}px`
+        
+        let rects = cursor_positioner.getClientRects(),
+        lastRect = rects[rects.length - 1],
+        left = lastRect.left-offsetLeft+lastRect.width + editor.scrollLeft;
+        
+        cursor.style.left = `${left}px`;
+        textarea.style.left = `${left}px`;
+        textarea.setSelectionRange(numberOfIndents,numberOfIndents);
+        
+        currentRow.innerHTML = setRow(textarea.value);
+        
+
+        setRowNumber(rows.length)
     }else if(e.key == '"' && (!(pairCount['"'] % 2))){
         let index = textarea.selectionStart;
         textarea.value = textarea.value.substring(0,textarea.selectionStart) + '""' + textarea.value.substring(textarea.selectionStart)
@@ -594,6 +1122,9 @@ textarea.addEventListener('keydown', (e)=>{
         
         e.preventDefault()
 
+        {fdf
+            dfd}
+
     }else if(e.key=="["){
         let index = textarea.selectionStart;
         textarea.value = textarea.value.substring(0,textarea.selectionStart) + "[]" + textarea.value.substring(textarea.selectionStart)
@@ -607,6 +1138,7 @@ textarea.addEventListener('keydown', (e)=>{
     }else if(e.key=="{"){
         let index = textarea.selectionStart;
         textarea.value = textarea.value.substring(0,textarea.selectionStart) + "{}" + textarea.value.substring(textarea.selectionStart)
+        
         cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart-1).replace(/\n$/, "\n\x01");
         currentRow.innerHTML =setRow(textarea.value)
         textarea.selectionStart = index+1;
@@ -624,7 +1156,7 @@ textarea.addEventListener('keydown', (e)=>{
         cursor_positioner.innerHTML = textarea.value.substring(0,textarea.selectionStart).replace(/\n$/, "\n\x01")
         e.preventDefault()
     }else if(e.key == 'Backspace' && cursor_positioner.textContent == ''){
-
+        console.log(textarea.value)
         if((currentRow.getClientRects()[0].width % editor.getClientRects()[0].width) > 0){
             editor.scrollLeft -= 10;
         }
@@ -666,11 +1198,7 @@ textarea.addEventListener('keydown', (e)=>{
 
             editor.scrollLeft = left - 100;
     
-            let text = '';
-            for(let i = 0; i < rows.length - 1; i++){
-                text += `<div>${i+1}</div>`;
-            }
-            lines.innerHTML = text;
+            setRowNumber(rows.length - 1)
         }
     }else if(e.key == 'ArrowLeft' && parseInt(slicePX(getComputedStyle(cursor).top)) / 21 != 0  && cursor_positioner.textContent.length == ''){
         const newIndex = parseInt(slicePX(getComputedStyle(cursor).top)) - 21;
@@ -756,7 +1284,7 @@ textarea.addEventListener('keydown', (e)=>{
         console.log(currentRow);
             
         textarea.value = newText;
-        
+
         if(newText.length >= cursor_positioner.textContent.length){
             textarea.setSelectionRange(index,index);
         }else{
@@ -842,6 +1370,7 @@ textarea.addEventListener('keydown', (e)=>{
                 editor.scrollLeft += 10;
             }
         }else if(e.key == 'Backspace' || e.key == 'ArrowLeft'){
+            console.log(textarea.value)
             if(cursor.getClientRects()[0].x < editor.getClientRects()[0].x  + 35){
                 if(editor.scrollLeft < editorDim.width){
                     editor.scrollLeft = 0;
@@ -852,7 +1381,11 @@ textarea.addEventListener('keydown', (e)=>{
 
             }
         }
+
+
     }
+
+
 
     
     
@@ -863,7 +1396,7 @@ textarea.addEventListener('keydown', (e)=>{
 function toggleFullScreen() {
     /**
      * Method fullscreens the editor 
-     */
+     **/
     var doc = window.document;
     var docEl = doc.documentElement;
 

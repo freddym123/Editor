@@ -18,6 +18,11 @@
             <div class="editor-header header">
                 <div class="file-name">main.js</div>
                 <div class="editor-controls">
+                    <label for="script-upload" class="style-upload-btn">
+                        <i class="fa-solid fa-file"></i>
+                    </label>
+                    <input type="file" id="script-upload" accept=".js">
+                    <button type="button" id="download"><i class="fa-solid fa-file-arrow-down"></i></button>
                     <button type="button" id="fullscreen"><i class="fa-solid fa-expand"></i></button>
                     <button type="button" id="screenmode"><i class="fa-regular fa-sun"></i></button>
                     <button type="button" class="run" id="runBtn">Run</button>
@@ -32,8 +37,10 @@
                     <textarea word-break='off' wrap="soft" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
                     <div class="hidden-row row-highlight"></div>                   
                     <div class="cursor-pos-div" style="position: absolute"><span class="cursor-pos"></span></div>
-                    <div class="row"><span class="text">/// Online</span></div>
-                    <div class="row"><span class="text">/// Online</span></div>
+                    <div class="select cursor-select-start" style="position: absolute"><span class="cursor-select-start-text"></span></div>
+                    <div class="select cursor-select-end" style="position: absolute"><span class="cursor-select-end-text"></span></div>
+                    <div class="row"><span class="text">// Welcome to a Free Javascript Editor</span></div>
+                    <div class="row"><span class="text">// Write, Edit, and Run Javascript code</span></div>
                     <div class="cursor"></div>
                 </div>
             </div>

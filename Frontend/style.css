@@ -272,6 +272,18 @@ span{
     white-space:pre-wrap;
 }
 
+input[type="file"]{
+    display: none;
+}
+
+.style-upload-btn{
+    color: white;
+    font-size: .9rem;
+    border: 1px solid rgba(190, 185, 185, 0.507);
+    padding: 7px 8px;
+    margin-right: .5rem;
+}
+
 textarea{
     position: absolute;
     letter-spacing: 1px;
@@ -281,11 +293,39 @@ textarea{
     background-color: unset;
     font-size: 1px;
     resize: none;
-    /*opacity: 0;*/
+    opacity: 0;
     overflow-x: scroll;
     white-space: nowrap;
     overflow-wrap:normal;
     overflow-x: scroll;
+}
+
+.select{
+    z-index: 100;
+    background-color: rgba(124, 124, 124, 0.377);
+    padding: .1rem 0 .1rem .25rem;
+    color: transparent;
+    white-space: pre;
+    border-color: transparent;
+    position: absolute;
+}
+
+.cursor-select-start{
+    z-index: 100;
+    background-color: rgba(124, 124, 124, 0.377);
+    padding: .1rem;
+    color: transparent;
+    width: max-content;
+    border-color: transparent;
+}
+
+.cursor-select-end{
+    z-index: 100;
+    background-color: rgba(124, 124, 124, 0.377);
+    padding: .1rem;
+    width:max-content;
+    border-color: transparent;
+    color: transparent;
 }
 
 
